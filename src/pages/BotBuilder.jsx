@@ -46,10 +46,102 @@ function BotBuilder() {
         setNodes(updateNodes);
     }
 
+    const handleCreateNewNode = async () => {
+        const newNodeNombre = prompt("Ingrese el nombre del nuevo menú (reclamos, horarios):");
+
+        if(!newNodeNombre) return;
+
+        const nodeId = newNodeNombre.toLowerCase().trim().replace(/\s+/g, '_');
+
+        if(nodes.find(n => n.node_key === nodeId)){
+            return alert("Ya existe un nodo con ese nombre");
+        }
+
+        const newNodeData = {
+            node_key: nodeId,
+            mensaje: "Escribe aquí el mensaje de este nuevo menú",
+            tipo_mensaje: "text",
+            botId: 1 // modificar dependiendo el bot
+        }
+
+        try {
+            const res = await axios.post(`${API_URL}/nodes`, newNodeData);
+
+            const nodeConOpcionesVacias = { ...res.data, opciones: [] };
+            setNodes([...nodes, nodeConOpcionesVacias]);
+            setActiveNodeId(res.data.id);
+            alert(`Nodo "${nodeId}" creado`);
+            
+        } catch (error) {
+            console.log(error);
+            alert("Error al crear el nodo en la base de datos");
+        }
+        
+    }
+
+    const hadleAddOption = () => {
+        //let res = `${Date.now()}`
+        let id = 9
+        const newOption = {
+            id: id,
+            key: "+",
+            text: "Nueva Opción",
+            ChatbotNodeId: activeNodeId,
+            next_node_id: null,
+            respuesta: {
+                type: "text",
+                body: "Mensaje de respuesta"
+            }
+        }
+
+        setNodes(nodes.map(n => n.id === activeNodeId?{...n, opciones: [...(n.opciones || []), newOption]}: n))
+    }
+
+    const handleSaveChanges = async () => {
+        try {
+            // 1. Actrualizar el Mensaje del Nodo
+            await axios.put(`${API_URL}/nodes/${activeNode?.id}`, {mensaje: activeNode?.mensaje});
+            // 2. Procesar cada opcion
+            console.log(activeNode);
+            const optionPromises = activeNode.opciones.map(opt => {
+                if(opt.id && typeof opt.id === 'number'){
+                    console.log("actualiza option: ", opt)
+                    return axios.put(`${API_URL}/options/${opt.id}`, opt);
+                }else{
+                    const {id, ...newOptData} = opt;
+                    return axios.post(`${API_URL}/options`, newOptData);
+                }
+            });
+            await Promise.all(optionPromises);
+
+            obtenerNodos()
+            alert("Cambios guardados con éxito");
+        } catch (error) {
+            alert("Error al guardar los cambios")
+        }
+    }
+
 
     const handlerDeleteOption = async (optId) => {
         if (!confirm("¿Estás seguro de eliminar esta Opción?")) return;
 
+    }
+
+    const changeOptionType = (optId, type) => {
+        const updatedNodes = nodes.map(n => {
+            return {
+                ...n, opciones: n.opciones.map(o => {
+                    if(o.id === optId){
+                        if(type === 'submenu') return { ...o, next_node_id: 'main', respuesta: null };
+                        return { ...o, next_node_id: null, respuesta: {type, body: "", url: ""} }
+                    }
+                    return o;
+                })
+            }
+            return n;
+        });
+
+        setNodes(updatedNodes);
     }
     return (
         <div className="flex flex-col lg:flex-row gap-6 p-4 bg-[#f8fafc] h-screen overflow-hidden">
@@ -59,7 +151,9 @@ function BotBuilder() {
                         <h2>Configuraciónn del Bot</h2>
                         <p>Nodo Activo: main</p>
                     </div>
-                    <button className={`px-6 py-3 rounded-xl text-sm shadow-lg flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200`}>
+                    <button 
+                        onClick={handleSaveChanges}
+                        className={`px-6 py-3 rounded-xl text-sm shadow-lg flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200`}>
                         Guardar Cambios
                     </button>
                 </header>
@@ -68,7 +162,7 @@ function BotBuilder() {
                     {nodes.map(node => (
                         <button key={node.id} onClick={() => setActiveNodeId(node.id)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border-2 ${activeNodeId === node.id ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200'}`}>{node.node_key}</button>
                     ))}
-                    <button className="px-4 py-2 rounded-xl text-xs font-black border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-all">
+                    <button onClick={handleCreateNewNode} className="px-4 py-2 rounded-xl text-xs font-black border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-all">
                         Nuevo Flujo
                     </button>
                 </div>
@@ -91,7 +185,7 @@ function BotBuilder() {
 
                 <div className="space-y-4">
                     <h3 className="text-sm font-black text-slate-400 uppercase">Opciones del Menú</h3>
-                    <button className="bg-indigo-600 text-white px-4 py-1 rounded-full text-xs hover:bg-indigo-700 transition-all">Añadir Opción</button>
+                    <button onClick={hadleAddOption} className="bg-indigo-600 text-white px-4 py-1 rounded-full text-xs hover:bg-indigo-700 transition-all">Añadir Opción</button>
 
                     {activeNode?.opciones?.map((opt) => (
                         <div key={opt.id} className="group bg-white border-2 border-slate-100 rounded-3xl p-5 hover-border-indigo-200 shadow-sm">
@@ -117,13 +211,84 @@ function BotBuilder() {
                                     <select
                                         className=" p-2 rounded-lg text-indigo-600"
                                         value={opt.next_node_id?'submenu': opt.respuesta?.type}
+                                        onChange={(e) => changeOptionType(opt.id, e.target.value)}
                                         >
                                         <option value="text">Enviar Texto</option>
                                         <option value="image">Enviar Imagen</option>
                                         <option value="location">Enviar Ubicación</option>
-                                        <option value="documento">Enviar Documento</option>
+                                        <option value="document">Enviar Documento</option>
                                         <option value="submenu">Ir a otro Sub-Menú</option>
                                     </select>
+
+                                    <div className="pt-2 border-t border-slete-100">
+                                        {opt.next_node_id?(
+                                            <div className="space-y-2">
+                                                <label className="text-[10px]">Nodo destino</label>
+                                                <select name="" id="" className="w-full p-2 bg-white border-slate-200 rounded_lg text-sm" value={opt.next_node_id} onChange={(e) => updateLocalOption(opt.id, 'next_node_id', e.target.value)}>
+                                                    {nodes.map(n => <option key={n.id} value={n.id}>{n.node_key}</option>)}
+                                                </select>
+
+                                            </div>
+                                        ):(
+                                            <div className="space-y.3">
+                                                {opt.respuesta?.type === 'text' && (
+                                                    <input type="text" className="w-full p-2 bg-white border rounded-lg text-sm" 
+                                                    value={opt.respuesta?.body || ""}
+                                                    onChange={(e) => updateLocalOption(opt.id, 'respuesta', {...opt.respuesta, body: e.target.value})} />
+                                                )}
+                                                {(opt.respuesta?.type === 'image' || opt.respuesta?.type === 'document') && (
+                                                    <div className="space-y-2">
+
+                                                        <input 
+                                                            type="text"
+                                                            className="w-full p-2 bg-white border rounded-lg text-sm"
+                                                            value={opt.respuesta?.link || ""}
+                                                            placeholder="Ingrese Link url"
+                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', { ...opt.respuesta, link: e.target.value })}
+                                                         />
+
+                                                        <input 
+                                                            type="text"
+                                                            className="w-full p-2 bg-white border rounded-lg text-sm"
+                                                            value={opt.respuesta?.caption || ""}
+                                                            placeholder="Ingrese Caption"
+                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', { ...opt.respuesta, link: e.target.value })}
+                                                         />
+                                                    </div>
+                                                )}
+                                                { opt.respuesta?.type === 'location' && (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <input 
+                                                            className="p-2 bg-white border rounded-lg text-sm"
+                                                            placeholder="Latitud"
+                                                            value={opt.respuesta?.latitude || ""}
+                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', {...opt.respuesta, latitude: e.target.value})}
+                                                         />
+                                                         <input 
+                                                            className="p-2 bg-white border rounded-lg text-sm"
+                                                            placeholder="Longitud"
+                                                            value={opt.respuesta?.longitude || ""}
+                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', {...opt.respuesta, longitude: e.target.value})}
+                                                         />
+                                                         <input 
+                                                            className="p-2 bg-white border rounded-lg text-sm"
+                                                            placeholder="Nombre del Lugar (Ej. Banco Central)"
+                                                            value={opt.respuesta?.name || ""}
+                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', {...opt.respuesta, name: e.target.value})}
+                                                         />
+                                                         <input 
+                                                            className="p-2 bg-white border rounded-lg text-sm"
+                                                            placeholder="Dirección Completa"
+                                                            value={opt.respuesta?.address || ""}
+                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', {...opt.respuesta, address: e.target.value})}
+                                                         />
+                                                    </div>
+                                                )}
+
+                                            </div>
+                                        )}
+
+                                    </div>
                                 </div>
                             </div>
                         </div>
