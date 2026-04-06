@@ -1,9 +1,37 @@
 import { useState } from "react";
 import BotBuilder from "./BotBuilder";
+import BotManager from "./BotManager";
 
 function Dasboard(){
 
     const [isSidebarOpen, setSidebarOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState('dashboard')
+
+    const [selectedBotId, setSelectedBotId] = useState(null);
+
+    const handleConfigureBot = (botId) => {
+        setSelectedBotId(botId);
+        setActiveTab('crear-bot');
+    }
+
+    function renderContent(){
+        switch (activeTab) {
+            case 'dashboard':
+                return (
+                    <div>
+                        Mi Dashboard
+                    </div>
+                );
+            case 'mis-bots':
+                return <BotManager onConfigure={handleConfigureBot} />
+            case 'crear-bot':
+                return <BotBuilder botId={selectedBotId}></BotBuilder>
+        
+            default:
+                break;
+        }
+    }
+    
 
     return (
         <>
@@ -16,10 +44,14 @@ function Dasboard(){
                 <aside className={`fixed inset-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform md:relative md:translate-x-0 ${isSidebarOpen?'translate-x-0':'-translate-x-full'} `}>
                     <div className="p-6 text-xl text-indigo-400">SIDEBAR CHATBOT</div>
                     <nav className="mt-4 px-4 space-y-2">
-                        <button className={`w-full flex items-center p-3 space-x-3 rounded-xl bg-indigo-600 hover:bg-slate-800`}>
+                        <button
+                        onClick={() => {setActiveTab('dashboard'); setSidebarOpen(false) }}
+                        className={`w-full flex items-center p-3 space-x-3 rounded-xl bg-indigo-600 hover:bg-slate-800`}>
                             INICIO
                         </button>
-                        <button className={`w-full flex items-center p-3 space-x-3 rounded-xl text-slate-400 hover:bg-slate-800`}>
+                        <button
+                            onClick={() => {setActiveTab('mis-bots'); setSidebarOpen(false) }}
+                            className={`w-full flex items-center p-3 space-x-3 rounded-xl text-slate-400 hover:bg-slate-800`}>
                             MIS CHATBOTS
                         </button>
                     </nav>
@@ -36,7 +68,7 @@ function Dasboard(){
                         </div>
                     </header>
                     <main className="flex-1 overflow-y-auto p-4 md:p-8">
-                        <BotBuilder></BotBuilder>
+                    {renderContent()}
                     </main>
                 </div>
 

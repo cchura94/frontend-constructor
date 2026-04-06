@@ -3,19 +3,23 @@ import { useEffect, useState } from "react";
 
 const API_URL = "http://127.0.0.1:3000/api/chatbot"
 
-function BotBuilder() {
+function BotBuilder({botId}) {
 
     const [nodes, setNodes] = useState([]);
     const [activeNodeId, setActiveNodeId] = useState(null);
 
     useEffect(() => {
-        obtenerNodos()
-    }, []);
+        if(botId){
+            obtenerNodos()
+        }else{
+            console.log("No se recibió un botId válido")
+        }
+    }, [botId]);
 
 
     const obtenerNodos = async () => {
 
-        const res = await axios.get(`${API_URL}/nodes?botId=1`);
+        const res = await axios.get(`${API_URL}/nodes?botId=${botId}`);
 
         console.log(res.data);
         setNodes(res.data);
@@ -61,7 +65,7 @@ function BotBuilder() {
             node_key: nodeId,
             mensaje: "Escribe aquí el mensaje de este nuevo menú",
             tipo_mensaje: "text",
-            botId: 1 // modificar dependiendo el bot
+            botId: botId // modificar dependiendo el bot
         }
 
         try {
@@ -80,13 +84,13 @@ function BotBuilder() {
     }
 
     const hadleAddOption = () => {
-        //let res = `${Date.now()}`
-        let id = 9
+        let res = `${Date.now()}`
+        // let id = 9
         const newOption = {
-            id: id,
+            id: res,
             key: "+",
             text: "Nueva Opción",
-            ChatbotNodeId: activeNodeId,
+            chatbotNodeId: activeNodeId,
             next_node_id: null,
             respuesta: {
                 type: "text",
@@ -252,7 +256,7 @@ function BotBuilder() {
                                                             className="w-full p-2 bg-white border rounded-lg text-sm"
                                                             value={opt.respuesta?.caption || ""}
                                                             placeholder="Ingrese Caption"
-                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', { ...opt.respuesta, link: e.target.value })}
+                                                            onChange={(e) => updateLocalOption(opt.id, 'respuesta', { ...opt.respuesta, caption: e.target.value })}
                                                          />
                                                     </div>
                                                 )}
