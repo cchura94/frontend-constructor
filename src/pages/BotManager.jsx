@@ -6,7 +6,7 @@ const API_URL = "http://127.0.0.1:3000/api"
 function BotManager({onConfigure}){
     const [misBots, setMisBots] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [newBot, setNewBot] = useState({name: "", plataforma: 'cloud'});
+    const [newBot, setNewBot] = useState({name: "", plataforma: 'cloud', number: "", identifier: ""});
 
     useEffect(() => {
         fetchBots()
@@ -81,6 +81,11 @@ function BotManager({onConfigure}){
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Número Cel</label>
                         <input type="text" required className="w-full mt-1 p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none "
                         placeholder="59173277937" value={newBot.number} onChange={(e) => setNewBot({...newBot, number: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Identificador (Phone ID/ Instancia)</label>
+                        <input type="text" required className="w-full mt-1 p-4 bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none "
+                        placeholder="Ej. 12365456546 o instancia_ventas" value={newBot.identifier} onChange={(e) => setNewBot({...newBot, identifier: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2">PLataforma</label>

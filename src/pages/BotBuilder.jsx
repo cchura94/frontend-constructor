@@ -7,14 +7,26 @@ function BotBuilder({botId}) {
 
     const [nodes, setNodes] = useState([]);
     const [activeNodeId, setActiveNodeId] = useState(null);
+    const [botPrompt, setBotPrompt] = useState("");
 
     useEffect(() => {
         if(botId){
             obtenerNodos()
+            obtenerConfiguracionBot()
+            
         }else{
             console.log("No se recibió un botId válido")
         }
     }, [botId]);
+
+    const obtenerConfiguracionBot = async () => {
+        try {
+            const res = await axios.get("http://127.0.0.1:3000/api/bots/"+botId);
+            setBotPrompt(res.data.prompt || "");
+        } catch (error) {
+            console.log("Error al capturar el bot")
+        }
+    }
 
 
     const obtenerNodos = async () => {
@@ -103,6 +115,9 @@ function BotBuilder({botId}) {
 
     const handleSaveChanges = async () => {
         try {
+
+            await axios.put(`http://127.0.0.1:3000/api/bots/${botId}`, {prompt: botPrompt});
+
             // 1. Actrualizar el Mensaje del Nodo
             await axios.put(`${API_URL}/nodes/${activeNode?.id}`, {mensaje: activeNode?.mensaje});
             // 2. Procesar cada opcion
@@ -183,6 +198,14 @@ function BotBuilder({botId}) {
                         rows="4"
                         placeholder="Escribe el mensaje que enviará el bot..."
                     ></textarea>
+                </div>
+
+                <div className="bg-indigo-50 p-6 rounded-3xl border-2 border-indigo-100 space-y-3">
+                    <div className="flex items-center gap-2">
+                        <label className="font-bold text-indigo-900 text-sm">Personalidad de la IA (System Prompt)</label>
+                    </div>
+                    <textarea className="w-full p-4 bg-white border-none rounded-2xl shadow-sm text-sm" rows="3" value={botPrompt} onChange={(e) => setBotPrompt(e.target.value)}></textarea>
+                    <p>Este prompt guiará las respuestas de la IA </p>
                 </div>
 
                 {/* Seccion opciones */}
